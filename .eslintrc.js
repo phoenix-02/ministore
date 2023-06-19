@@ -1,5 +1,3 @@
 module.exports = {
-  "extends": [
-    "plugin:nuxt/recommended"
-  ]
+  "extends": ["@nuxtjs/eslint-config-typescript"]
 }

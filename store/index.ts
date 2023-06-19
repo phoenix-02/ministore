@@ -1,102 +1,80 @@
-import {defineStore} from 'pinia'
-import {TypeProductName, TypeProduct} from '@/types/product'
-import {TypeGroup} from '@/types/group'
+import { defineStore } from 'pinia'
+import { TypeProductName, TypeProduct } from '@/types/product'
+import { TypeCurrency } from '~/types/currency'
 
 type State = {
-    cart: TypeProduct[]
-    currencyRate: number
-    goods: TypeProduct[]
-    groups: Map<string, TypeGroup>
-    productNames: TypeProductName[]
+  cart: TypeProduct[]
+  rates: TypeCurrency[]
+  selectedRate: TypeCurrency
+  goods: TypeProduct[]
+  productNames: TypeProductName[]
 }
-
 export const useStore = defineStore({
-    id: 'mainStore',
-    state: (): State => {
-        return {
-            cart: [],
-            currencyRate: 1,
-            goods: [],
-            groups: new Map(),
-            productNames: [],
+  id: 'mainStore',
+  state: (): State => {
+    return {
+      cart: [],
+      rates: [],
+      selectedRate: { name: 'USD', rate: 1 },
+      goods: [],
+      productNames: []
+    }
+  },
+  actions: {
+
+    addToCart (item: TypeProduct) {
+      const found = this.cart.find(good => good.T === item.T)
+
+      if (found) {
+        found.P++
+      } else {
+        this.cart.push({ ...item, P: 1 })
+      }
+    },
+
+    removeFromCart (item: TypeProduct) {
+      const found = this.cart.find((good: TypeProduct) => good.T === item.T)
+
+      if (found && found.P > 1) {
+        found.P--
+      } else {
+        this.cart = this.cart.filter((good: TypeProduct) => good.T !== item.T)
+      }
+    },
+
+    async fetchGoods () {
+      try {
+        const response:any = await $fetch('/data.json')
+        if (response?.Value?.Goods) {
+          this.goods = response.Value.Goods
         }
+      } catch (error) {
+        console.error('Error fetching goods:', error)
+      }
     },
-    actions: {
-        setData(goods: TypeProduct[]) {
-            this.goods = goods
-        },
 
-        setGroups(groups: Record<string, TypeGroup>) {
-            this.groups = new Map(Object.entries(groups))
-        },
-
-        setCurrencyRate(rate: number) {
-            this.currencyRate = rate
-        },
-
-        addToCart(item: TypeProduct) {
-            const found = this.cart.find((good) => good.T === item.T)
-
-            if (found) {
-                found.P++
-            } else {
-                this.cart.push({...item, P: 1})
-            }
-        },
-        removeFromCart(item: TypeProduct) {
-            const found = this.cart.find((good) => good.T === item.T)
-
-            if (found && found.P > 1) {
-                found.P--
-            } else {
-                this.cart = this.cart.filter((good) => good.T !== item.T)
-            }
-        },
-
-        async fetchData() {
-            const {data} = await useAsyncData(
-                'data.json',
-                () => $fetch(process.env.baseUrl + '/data.json')
-            )
-
-            const {data: groups} = await useAsyncData(
-                'groups',
-                () => $fetch('/data.json')
-            )
-
-            this.setData(data.Value.Goods)
-            this.setGroups(groups)
-        },
-
-        async fetchCurrencyRate() {
-            const {data} = await useAsyncData(
-              'groups',
-              () => $fetch(
-                'https://api.exchangerate.host/latest?base=USD'
-              )
-            )
-            this.setCurrencyRate(data.rates.RUB)
-        },
+    async fetchCurrencyRate () {
+      try {
+        const response:any = await $fetch('https://api.exchangerate.host/latest?base=USD')
+        if (response?.rates) {
+          console.log('rates in store')
+          this.rates = response.rates
+        }
+      } catch (error) {
+        console.error('Error fetching currency rate:', error)
+      }
+    }
+  },
+  getters: {
+    getProductById (store: State, id: number):TypeProduct | undefined {
+      return store.goods.find(item => item.T === Number(id))
     },
-    getters: {
-        totalSum: (state) => {
-            return state.cart.reduce(
-                (total: number, item: TypeProduct) =>
-                    total + item.C * state.currencyRate * item.P,
-                0
-            )
-        },
-        getGroupName: (state) => {
-            return (id: string): string => {
-                return state.groups.get(id)?.G || '' // G - name
-            }
-        },
-
-        getProductName() {
-            return (id: string) => {
-                const nameItem = this.productNames.find((item) => item.T === Number(id))
-                return nameItem ? nameItem.N : ''
-            }
-        },
-    },
+    totalSum (state: State) {
+      return state.cart.reduce(
+        (total: number, item: TypeProduct) =>
+          total + item.C * state.selectedRate.rate * item.P,
+        0
+      )
+    }
+  }
 })

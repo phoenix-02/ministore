@@ -1,38 +1,35 @@
 <template>
   <div>
-    <div v-for='item in goods' :key='item.T'>
-      <GoodsItem :item='item' />
-    </div>
+    <CurrencyAutocomplete />
+    <GroupsWithGoodsList />
 
-    <div v-for='item in cart' :key='item.T'>
-      <CartItem :item='item' />
+    <div v-for="item in cart" :key="item.T">
+      <!--      <CartItem :item='item' />-->
     </div>
 
     <p>Сумма: {{ totalSum }}</p>
   </div>
 </template>
 
-<script lang='ts'>
-import { defineComponent, onBeforeUnmount, onMounted } from 'vue'
-import { useStore } from '~/store'
-import GoodsItem from '~/components/GoodsItem.vue'
-import CartItem from '~/components/CartItem.vue'
-
+<script lang='ts'>// import CartItem from '~/components/CartItem.vue'
+import { useStore } from '~/store/index'
+import GroupsWithGoodsList from '~/components/GroupsWithGoodsList.vue'
 
 export default defineComponent({
   components: {
-    GoodsItem,
-    CartItem
+    GroupsWithGoodsList
+    // CartItem
   },
-  setup() {
-
+  setup () {
     const store = useStore()
     let intervalId: number | undefined
+    const viewStructure = ref()
+
+    const goods = computed(() => store.goods)
 
     onMounted(async () => {
-      await store.fetchData()
+      await store.fetchGoods()
       await store.fetchCurrencyRate()
-
       intervalId = window.setInterval(store.fetchCurrencyRate, 15000)
     })
 
@@ -43,7 +40,8 @@ export default defineComponent({
     })
 
     return {
-      goods: store.goods,
+      viewStructure,
+      goods,
       cart: store.cart,
       totalSum: store.totalSum
     }
